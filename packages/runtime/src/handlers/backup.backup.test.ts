@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from "vitest";
-import { bytesToBase64, bytesToBase64Url, decodeBackupFile, encodeBackupFile, newBackupId, type Wallet } from "@gleam/core";
-import { Keyring } from "@gleam/core/signer";
+import { bytesToBase64, bytesToBase64Url, decodeBackupFile, encodeBackupFile, newBackupId, type VaultEnvelopeV2, type Wallet } from "@gleam/core";
+import { DEFAULT_ARGON2ID_PARAMS, Keyring } from "@gleam/core/signer";
 import { userErrorMessage } from "@gleam/core/src/models/user-errors.ts";
 import { InMemoryCloudAccount, InMemoryCloudFile, InMemoryStorage, InMemoryTimer } from "../../testing";
 import { registerBackupSync } from "../backup-sync";
@@ -93,6 +93,17 @@ describe("BackupHandler: set up", () => {
     expect(status).toMatchObject({ enabled: true, problem: null });
     expect(status.lastBackupAt).toBeGreaterThan(0);
     expect(target.cloud.account.writes).toBe(1);
+  });
+
+  it("wraps the backup key at the default cost when every stored envelope is below it", async () => {
+    // The test vault's envelopes are written at TEST_KDF, below the current
+    // default, so the wrap must fall back to the default instead of copying
+    // their cost.
+    const target = await backedUp();
+    const stored = target.storage.entries.get(BACKUP_KEY) as { wrapped: VaultEnvelopeV2 };
+    expect(stored.wrapped.memoryKiB).toBe(DEFAULT_ARGON2ID_PARAMS.memoryKiB);
+    expect(stored.wrapped.iterations).toBe(DEFAULT_ARGON2ID_PARAMS.iterations);
+    expect(stored.wrapped.parallelism).toBe(DEFAULT_ARGON2ID_PARAMS.parallelism);
   });
 
   it("puts nothing readable in the account", async () => {

@@ -28,6 +28,7 @@ import {
   type VaultEnvelopeV2,
 } from "@gleam/core";
 import {
+  envelopeNeedsUpgrade,
   importBackupKey,
   KeyringLockedError,
   mintBackupKey,
@@ -341,7 +342,10 @@ export class BackupHandler {
     const envelope = (Array.isArray(wallets) ? wallets : [])
       .filter(isValidWallet)
       .map((wallet) => wallet.encryptedKeyfile)
-      .find((candidate): candidate is VaultEnvelopeV2 => candidate?.version === 2);
+      .find(
+        (candidate): candidate is VaultEnvelopeV2 =>
+          candidate?.version === 2 && !envelopeNeedsUpgrade(candidate),
+      );
     if (!envelope) return {};
     const { memoryKiB, iterations, parallelism, salt } = envelope;
     return { params: { memoryKiB, iterations, parallelism }, salt };
